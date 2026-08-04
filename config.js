@@ -1,3 +1,3 @@
 const CONFIG = {
-    apiUrl: ""
+    apiUrl: "YOUR_WEB_APP_URL"
 };
