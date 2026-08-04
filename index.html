@@ -1,89 +1,526 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HelpDesk</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lite Help Desk</title>
+<style>
+  :root{
+    --bg:#14171c;
+    --surface:#1b1f26;
+    --surface-2:#232833;
+    --line:#2c323d;
+    --ink:#e9e7e0;
+    --ink-dim:#9aa1ad;
+    --brass:#c98a3d;
+    --brass-dim:#8a6230;
+    --blue:#5b8dd9;
+    --green:#4caf7d;
+    --red:#e2554f;
+    --gray:#6b7280;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.035) 1px, transparent 0);
+    background-size: 22px 22px;
+    pointer-events:none;
+    z-index:0;
+  }
+  .app{position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:28px 20px 80px;}
 
-    <link rel="stylesheet" href="style.css">
+  header.top{display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:14px;}
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand .tag{
+    width:38px;height:38px;border-radius:8px;
+    background:linear-gradient(155deg,var(--brass),var(--brass-dim));
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono); font-weight:700; color:#1b1204; font-size:15px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px rgba(201,138,61,0.25);
+  }
+  .brand h1{font-size:17px; margin:0; letter-spacing:0.2px;}
+  .brand .sub{font-size:11px; color:var(--ink-dim); letter-spacing:0.6px; text-transform:uppercase; margin-top:1px;}
+
+  nav.views{display:flex; background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:3px; gap:2px;}
+  nav.views button{
+    background:transparent; border:0; color:var(--ink-dim); padding:8px 14px; font-size:12.5px;
+    border-radius:6px; cursor:pointer; font-family:var(--sans); letter-spacing:0.3px; font-weight:600;
+  }
+  nav.views button.active{background:var(--surface-2); color:var(--brass);}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:22px;
+  }
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:640px){ .grid{grid-template-columns:1fr;} }
+
+  label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-dim); margin-bottom:6px; font-weight:600;}
+  input, textarea, select{
+    width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
+    padding:10px 12px; border-radius:7px; font-family:var(--sans); font-size:14px; margin-bottom:16px;
+  }
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--brass-dim); outline-offset:1px; border-color:var(--brass);}
+  textarea{min-height:110px; resize:vertical;}
+
+  button.primary{
+    background:var(--brass); color:#1b1204; border:0; padding:11px 20px; border-radius:8px;
+    font-weight:700; font-size:13.5px; cursor:pointer; letter-spacing:0.2px;
+  }
+  button.primary:hover{background:#dc9c50;}
+  button.ghost{
+    background:transparent; border:1px solid var(--line); color:var(--ink); padding:9px 16px;
+    border-radius:8px; cursor:pointer; font-size:13px;
+  }
+  button.ghost:hover{border-color:var(--brass-dim); color:var(--brass);}
+
+  .stub-note{
+    display:flex; gap:10px; align-items:flex-start; background:var(--surface-2); border:1px dashed var(--line);
+    border-radius:8px; padding:12px 14px; font-size:12.5px; color:var(--ink-dim); margin-top:6px;
+  }
+
+  /* --- Ticket stub / work-order card (signature element) --- */
+  .ticket{
+    position:relative; display:flex; background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; margin-bottom:12px; overflow:hidden; cursor:pointer; transition:border-color .15s;
+  }
+  .ticket:hover{border-color:var(--brass-dim);}
+  .ticket .stub{
+    width:64px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:var(--surface-2); border-right:2px dashed var(--line); position:relative;
+  }
+  .ticket .stub::before, .ticket .stub::after{
+    content:""; position:absolute; width:12px; height:12px; background:var(--bg); border-radius:50%;
+    right:-7px;
+  }
+  .ticket .stub::before{top:-6px;}
+  .ticket .stub::after{bottom:-6px;}
+  .ticket .stub .id{font-family:var(--mono); font-size:13px; color:var(--brass); font-weight:700;}
+  .ticket .stub .pr{font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; color:var(--ink-dim);}
+  .ticket .body{flex:1; padding:14px 16px; min-width:0;}
+  .ticket .row1{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .ticket .subject{font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ticket .meta{font-size:12px; color:var(--ink-dim); margin-top:4px; display:flex; gap:10px; flex-wrap:wrap;}
+  .badge{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:0.4px; font-weight:700; padding:3px 9px;
+    border-radius:20px; white-space:nowrap;
+  }
+  .badge.open{background:rgba(201,138,61,0.18); color:var(--brass);}
+  .badge.in_progress{background:rgba(91,141,217,0.18); color:var(--blue);}
+  .badge.resolved{background:rgba(76,175,125,0.18); color:var(--green);}
+  .badge.closed{background:rgba(107,114,128,0.22); color:var(--gray);}
+  .badge.urgent{background:rgba(226,85,79,0.18); color:var(--red);}
+  .badge.high{background:rgba(226,85,79,0.1); color:#e2857f;}
+  .badge.normal{background:rgba(255,255,255,0.06); color:var(--ink-dim);}
+  .badge.low{background:rgba(255,255,255,0.04); color:var(--ink-dim);}
+
+  .stats{display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:12px 16px; min-width:100px;}
+  .stat .n{font-family:var(--mono); font-size:22px; font-weight:700;}
+  .stat .l{font-size:10.5px; text-transform:uppercase; color:var(--ink-dim); letter-spacing:0.5px; margin-top:2px;}
+
+  .filters{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+  .filters select, .filters input{width:auto; margin-bottom:0; padding:8px 10px; font-size:12.5px;}
+  .filters input{flex:1; min-width:160px;}
+
+  .hidden{display:none !important;}
+  .center-lock{max-width:340px; margin:60px auto; text-align:center;}
+  .center-lock .tag{width:52px;height:52px;border-radius:10px;margin:0 auto 16px;}
+
+  .detail-header{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:10px;}
+  .comment{background:var(--surface-2); border-radius:8px; padding:10px 12px; margin-bottom:8px;}
+  .comment .who{font-size:11.5px; font-weight:700; color:var(--brass); margin-bottom:3px;}
+  .comment.requester .who{color:var(--blue);}
+  .comment .when{font-size:10.5px; color:var(--ink-dim); font-weight:400; margin-left:6px;}
+  .comment .msg{font-size:13.5px; line-height:1.5; white-space:pre-wrap;}
+
+  .empty{text-align:center; padding:50px 20px; color:var(--ink-dim);}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface-2);
+    border:1px solid var(--brass-dim); color:var(--ink); padding:11px 20px; border-radius:8px; font-size:13px;
+    z-index:50; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  small.hint{color:var(--ink-dim); font-size:11.5px;}
+  a.link-btn{color:var(--brass); text-decoration:none; font-size:13px; cursor:pointer;}
+</style>
 </head>
-
 <body>
-
-<header>
-
-    <div class="logo">
-        <img src="assets/logo.png" alt="Logo">
-        <h1>Help Desk</h1>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="tag">HD</div>
+      <div>
+        <h1>Lite Help Desk</h1>
+        <div class="sub">ticket dispatch</div>
+      </div>
     </div>
+    <nav class="views">
+      <button id="nav-submit" class="active">Submit a Ticket</button>
+      <button id="nav-status">Check Status</button>
+      <button id="nav-admin">Dispatch Board</button>
+    </nav>
+  </header>
 
-    <button id="newTicketBtn">
-        + New Ticket
-    </button>
+  <!-- SUBMIT VIEW -->
+  <section id="view-submit">
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>Your Name</label>
+          <input id="s-name" type="text" placeholder="Jane Doe">
+        </div>
+        <div>
+          <label>Email</label>
+          <input id="s-email" type="email" placeholder="jane@company.com">
+        </div>
+      </div>
+      <label>Subject</label>
+      <input id="s-subject" type="text" placeholder="Printer offline at front counter">
+      <label>Priority</label>
+      <select id="s-priority">
+        <option value="low">Low</option>
+        <option value="normal" selected>Normal</option>
+        <option value="high">High</option>
+        <option value="urgent">Urgent</option>
+      </select>
+      <label>Describe the issue</label>
+      <textarea id="s-desc" placeholder="What's happening, when it started, and anything you've already tried..."></textarea>
+      <button class="primary" id="btn-submit">Submit Ticket</button>
+      <div class="stub-note">🎫 Once submitted, you'll get a ticket number and a private link to track status and reply — no account needed.</div>
+    </div>
+  </section>
 
-</header>
+  <!-- STATUS CHECK VIEW -->
+  <section id="view-status" class="hidden">
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>Ticket Number</label>
+          <input id="chk-id" type="text" placeholder="e.g. 4">
+        </div>
+        <div>
+          <label>Your Ticket Link Token</label>
+          <input id="chk-token" type="text" placeholder="from your confirmation">
+        </div>
+      </div>
+      <button class="primary" id="btn-check">View Ticket</button>
+      <small class="hint" style="display:block;margin-top:10px;">Tip: bookmark the confirmation link you received after submitting — it fills this in automatically.</small>
+    </div>
+    <div id="status-result" style="margin-top:18px;"></div>
+  </section>
 
-<main>
+  <!-- ADMIN LOCK VIEW -->
+  <section id="view-lock" class="hidden">
+    <div class="card center-lock">
+      <div class="tag" style="background:linear-gradient(155deg,var(--brass),var(--brass-dim)); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; color:#1b1204;">HD</div>
+      <h2 style="font-size:16px; margin:0 0 4px;">Dispatch Board Access</h2>
+      <p style="color:var(--ink-dim); font-size:13px; margin:0 0 16px;">Enter the admin PIN to view and manage tickets.</p>
+      <input id="admin-pin" type="password" placeholder="PIN" style="text-align:center; letter-spacing:4px; font-size:18px;">
+      <button class="primary" id="btn-unlock" style="width:100%;">Unlock</button>
+    </div>
+  </section>
 
-<section class="search">
+  <!-- ADMIN DASHBOARD VIEW -->
+  <section id="view-dash" class="hidden">
+    <div class="stats" id="stats-row"></div>
+    <div class="filters">
+      <select id="f-status">
+        <option value="">All statuses</option>
+        <option value="open">Open</option>
+        <option value="in_progress">In progress</option>
+        <option value="resolved">Resolved</option>
+        <option value="closed">Closed</option>
+      </select>
+      <select id="f-priority">
+        <option value="">All priorities</option>
+        <option value="urgent">Urgent</option>
+        <option value="high">High</option>
+        <option value="normal">Normal</option>
+        <option value="low">Low</option>
+      </select>
+      <input id="f-search" type="text" placeholder="Search subject, requester, ticket #...">
+      <button class="ghost" id="btn-refresh">Refresh</button>
+      <button class="ghost" id="btn-logout">Lock</button>
+    </div>
+    <div id="ticket-list"></div>
+  </section>
 
-<input
-type="text"
-id="search"
-placeholder="Search tickets...">
-
-</section>
-
-<section id="ticketList">
-
-</section>
-
-</main>
-
-<div id="modal" class="hidden">
-
-<div class="modal-content">
-
-<h2>New Ticket</h2>
-
-<input id="company" placeholder="Company">
-
-<input id="contact" placeholder="Contact">
-
-<input id="phone" placeholder="Phone">
-
-<input id="email" placeholder="Email">
-
-<select id="priority">
-
-<option>Low</option>
-<option selected>Normal</option>
-<option>High</option>
-
-</select>
-
-<textarea
-id="description"
-placeholder="Describe the issue"></textarea>
-
-<div class="buttons">
-
-<button id="saveTicket">
-Save Ticket
-</button>
-
-<button id="cancel">
-Cancel
-</button>
-
+  <!-- TICKET DETAIL (admin) -->
+  <section id="view-ticket" class="hidden">
+    <a class="link-btn" id="back-to-dash">← Back to board</a>
+    <div class="card" style="margin-top:12px;" id="ticket-detail-body"></div>
+  </section>
 </div>
 
-</div>
+<script>
+// ============================================================
+// PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE (see README.md)
+// It looks like: https://script.google.com/macros/s/AKfycb.../exec
+// ============================================================
+const CONFIG = {
+  APPS_SCRIPT_URL: 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE'
+};
 
-</div>
+async function apiGet(params){
+  const u = new URL(CONFIG.APPS_SCRIPT_URL);
+  Object.entries(params).forEach(([k,v]) => { if (v !== undefined && v !== '') u.searchParams.set(k, v); });
+  const r = await fetch(u.toString());
+  return r.json();
+}
+async function apiPost(payload){
+  // text/plain avoids a CORS preflight against the Apps Script endpoint
+  const r = await fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  return r.json();
+}
 
-<script src="config.js"></script>
-<script src="app.js"></script>
+const $ = (id) => document.getElementById(id);
+let ADMIN_PIN = sessionStorage.getItem('hd_pin') || null;
+let CURRENT_TICKET_ID = null;
 
+if (CONFIG.APPS_SCRIPT_URL.indexOf('PASTE_YOUR') === 0){
+  window.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('.app').insertAdjacentHTML('afterbegin',
+      `<div class="stub-note" style="border-color:var(--red); margin-bottom:16px;">
+        ⚠️ Not connected yet — open index.html and set <strong>CONFIG.APPS_SCRIPT_URL</strong> to your deployed Apps Script Web App URL. See README.md.
+      </div>`);
+  });
+}
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function priorityLabel(p){ return p.charAt(0).toUpperCase()+p.slice(1); }
+function statusLabel(s){ return s.replace('_',' ').replace(/\b\w/g, c=>c.toUpperCase()); }
+
+// ---------- view switching ----------
+const views = ['submit','status','lock','dash','ticket'];
+function showView(name){
+  views.forEach(v => $('view-'+v).classList.toggle('hidden', v !== name));
+  document.querySelectorAll('nav.views button').forEach(b=>b.classList.remove('active'));
+}
+$('nav-submit').onclick = () => { showView('submit'); $('nav-submit').classList.add('active'); };
+$('nav-status').onclick = () => { showView('status'); $('nav-status').classList.add('active'); };
+$('nav-admin').onclick = () => {
+  if (ADMIN_PIN) { showView('dash'); $('nav-admin').classList.add('active'); loadDashboard(); }
+  else { showView('lock'); $('nav-admin').classList.add('active'); }
+};
+
+// ---------- submit ticket ----------
+$('btn-submit').onclick = async () => {
+  const payload = {
+    requesterName: $('s-name').value.trim(),
+    requesterEmail: $('s-email').value.trim(),
+    subject: $('s-subject').value.trim(),
+    description: $('s-desc').value.trim(),
+    priority: $('s-priority').value,
+  };
+  if (!payload.requesterName || !payload.requesterEmail || !payload.subject || !payload.description){
+    toast('Please fill in all fields.'); return;
+  }
+  const data = await apiPost(Object.assign({action:'create'}, payload));
+  if (data.error){ toast(data.error); return; }
+  ['s-name','s-email','s-subject','s-desc'].forEach(id=>$(id).value='');
+  $('s-priority').value = 'normal';
+  const link = `${location.origin}/#status/${data.ticket.id}/${data.ticket.publicToken}`;
+  document.querySelector('#view-submit .card').insertAdjacentHTML('afterbegin',
+    `<div class="stub-note" style="border-color:var(--green); margin-bottom:16px;">
+      ✅ Ticket <strong>#${data.ticket.id}</strong> created. Save this link to check status or reply:<br>
+      <input readonly value="${link}" style="margin-top:8px; font-family:var(--mono); font-size:12px;" onclick="this.select()">
+    </div>`);
+  toast('Ticket submitted');
+};
+
+// ---------- status check (public) ----------
+$('btn-check').onclick = () => checkStatus($('chk-id').value.trim(), $('chk-token').value.trim());
+
+async function checkStatus(id, token){
+  if (!id || !token){ toast('Enter both ticket number and token.'); return; }
+  const data = await apiGet({action:'public', id, token});
+  const box = $('status-result');
+  if (data.error){ box.innerHTML = `<div class="card empty">Ticket not found. Check your ticket number and link token.</div>`; return; }
+  const t = data.ticket;
+  box.innerHTML = `
+    <div class="card">
+      <div class="detail-header">
+        <div>
+          <div style="font-size:15px; font-weight:700;">#${t.id} — ${escapeHtml(t.subject)}</div>
+          <div style="font-size:12px; color:var(--ink-dim); margin-top:4px;">Opened ${fmtDate(t.createdAt)}</div>
+        </div>
+        <span class="badge ${t.status}">${statusLabel(t.status)}</span>
+      </div>
+      <p style="font-size:13.5px; line-height:1.5; white-space:pre-wrap;">${escapeHtml(t.description)}</p>
+      <div id="public-comments" style="margin-top:14px;"></div>
+      <label style="margin-top:14px;">Add a reply</label>
+      <textarea id="reply-msg" placeholder="Add more info or ask a question..."></textarea>
+      <button class="primary" id="btn-reply">Send Reply</button>
+    </div>`;
+  const cbox = $('public-comments');
+  (t.comments||[]).forEach(c => {
+    cbox.insertAdjacentHTML('beforeend', `
+      <div class="comment ${c.role}">
+        <div class="who">${escapeHtml(c.author)}<span class="when">${fmtDate(c.createdAt)}</span></div>
+        <div class="msg">${escapeHtml(c.message)}</div>
+      </div>`);
+  });
+  $('btn-reply').onclick = async () => {
+    const msg = $('reply-msg').value.trim();
+    if (!msg) return;
+    const rr = await apiPost({action:'comment', id, token, message:msg});
+    if (!rr.error){ toast('Reply sent'); checkStatus(id, token); } else { toast('Could not send reply'); }
+  };
+}
+
+// support deep link like #status/4/abc123
+if (location.hash.startsWith('#status/')){
+  const [,id,token] = location.hash.split('/');
+  showView('status'); $('nav-status').classList.add('active');
+  $('chk-id').value = id; $('chk-token').value = token;
+  checkStatus(id, token);
+}
+
+// ---------- admin unlock ----------
+$('btn-unlock').onclick = async () => {
+  const pin = $('admin-pin').value;
+  const data = await apiPost({action:'checkPin', pin});
+  if (data.ok){
+    ADMIN_PIN = pin; sessionStorage.setItem('hd_pin', pin);
+    showView('dash'); $('nav-admin').classList.add('active'); loadDashboard();
+  } else { toast('Incorrect PIN'); }
+};
+$('admin-pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-unlock').click(); });
+
+$('btn-logout').onclick = () => { ADMIN_PIN = null; sessionStorage.removeItem('hd_pin'); showView('lock'); };
+$('btn-refresh').onclick = loadDashboard;
+['f-status','f-priority'].forEach(id => $(id).addEventListener('change', loadDashboard));
+$('f-search').addEventListener('input', debounce(loadDashboard, 300));
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+async function adminGet(params){
+  const data = await apiGet(Object.assign({pin: ADMIN_PIN}, params));
+  if (data.error === 'unauthorized'){ ADMIN_PIN = null; sessionStorage.removeItem('hd_pin'); showView('lock'); throw new Error('unauthorized'); }
+  return data;
+}
+async function adminPost(payload){
+  const data = await apiPost(Object.assign({pin: ADMIN_PIN}, payload));
+  if (data.error === 'unauthorized'){ ADMIN_PIN = null; sessionStorage.removeItem('hd_pin'); showView('lock'); throw new Error('unauthorized'); }
+  return data;
+}
+
+async function loadDashboard(){
+  const statsData = await adminGet({action:'stats'});
+  const s = statsData.stats;
+  $('stats-row').innerHTML = [
+    ['Total', s.total, 'ink'], ['Open', s.open, 'brass'], ['In Progress', s.in_progress, 'blue'],
+    ['Resolved', s.resolved, 'green'], ['Urgent Open', s.urgent_open, 'red']
+  ].map(([l,n,c]) => `<div class="stat"><div class="n" style="color:var(--${c==='ink'?'ink':c})">${n}</div><div class="l">${l}</div></div>`).join('');
+
+  const data = await adminGet({
+    action:'list',
+    status: $('f-status').value,
+    priority: $('f-priority').value,
+    q: $('f-search').value.trim()
+  });
+  const list = $('ticket-list');
+  if (!data.tickets.length){ list.innerHTML = `<div class="card empty">No tickets match these filters.</div>`; return; }
+  list.innerHTML = data.tickets.map(t => `
+    <div class="ticket" data-id="${t.id}">
+      <div class="stub"><div class="id">#${t.id}</div><div class="pr">${priorityLabel(t.priority)}</div></div>
+      <div class="body">
+        <div class="row1">
+          <div class="subject">${escapeHtml(t.subject)}</div>
+          <span class="badge ${t.status}">${statusLabel(t.status)}</span>
+        </div>
+        <div class="meta">
+          <span>${escapeHtml(t.requesterName)}</span>
+          <span>${fmtDate(t.updatedAt)}</span>
+          ${t.priority==='urgent'?'<span class="badge urgent">Urgent</span>':''}
+        </div>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('.ticket').forEach(el => el.onclick = () => openTicket(el.dataset.id));
+}
+
+async function openTicket(id){
+  CURRENT_TICKET_ID = id;
+  const data = await adminGet({action:'get', id});
+  const t = data.ticket;
+  showView('ticket');
+  $('ticket-detail-body').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div style="font-size:16px; font-weight:700;">#${t.id} — ${escapeHtml(t.subject)}</div>
+        <div style="font-size:12px; color:var(--ink-dim); margin-top:4px;">
+          ${escapeHtml(t.requesterName)} · ${escapeHtml(t.requesterEmail)} · opened ${fmtDate(t.createdAt)}
+        </div>
+      </div>
+    </div>
+    <div class="filters" style="margin-bottom:16px;">
+      <select id="d-status">
+        ${['open','in_progress','resolved','closed'].map(s=>`<option value="${s}" ${t.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
+      </select>
+      <select id="d-priority">
+        ${['low','normal','high','urgent'].map(p=>`<option value="${p}" ${t.priority===p?'selected':''}>${priorityLabel(p)}</option>`).join('')}
+      </select>
+      <input id="d-assignee" type="text" placeholder="Assign to..." value="${escapeHtml(t.assignee||'')}">
+      <button class="ghost" id="btn-save-meta">Save</button>
+      <button class="ghost" id="btn-delete" style="border-color:var(--red); color:var(--red);">Delete</button>
+    </div>
+    <p style="font-size:13.5px; line-height:1.55; white-space:pre-wrap; background:var(--surface-2); padding:12px 14px; border-radius:8px;">${escapeHtml(t.description)}</p>
+    <div id="ticket-comments" style="margin-top:16px;"></div>
+    <label style="margin-top:14px;">Reply as Support</label>
+    <textarea id="agent-msg" placeholder="Write an update for the requester..."></textarea>
+    <button class="primary" id="btn-agent-reply">Send Reply</button>
+  `;
+  const cbox = $('ticket-comments');
+  (t.comments||[]).forEach(c => {
+    cbox.insertAdjacentHTML('beforeend', `
+      <div class="comment ${c.role}">
+        <div class="who">${escapeHtml(c.author)}<span class="when">${fmtDate(c.createdAt)}</span></div>
+        <div class="msg">${escapeHtml(c.message)}</div>
+      </div>`);
+  });
+  $('btn-save-meta').onclick = async () => {
+    await adminPost({action:'update', id, status:$('d-status').value, priority:$('d-priority').value, assignee:$('d-assignee').value});
+    toast('Ticket updated');
+  };
+  $('btn-delete').onclick = async () => {
+    if (!confirm('Delete this ticket permanently?')) return;
+    await adminPost({action:'delete', id});
+    toast('Ticket deleted'); showView('dash'); loadDashboard();
+  };
+  $('btn-agent-reply').onclick = async () => {
+    const msg = $('agent-msg').value.trim();
+    if (!msg) return;
+    await adminPost({action:'comment', id, message:msg, author:'Support'});
+    toast('Reply sent'); openTicket(id);
+  };
+}
+$('back-to-dash').onclick = () => { showView('dash'); $('nav-admin').classList.add('active'); loadDashboard(); };
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
 </body>
 </html>
